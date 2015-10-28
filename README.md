@@ -27,8 +27,9 @@ The project to build my sample PostgreSQL cluster, using pgpool-II, with below f
 # Scripts:
 The scripts is on github:https://github.com/fanyangxi/my-postgresql-cluster  
 Notes (暂时在印象笔记中):  
-https://app.yinxiang.com/shard/s54/nl/2147483647/a83cf48f-3741-472b-8059-e8d4c762b1fc/
-https://app.yinxiang.com/shard/s54/nl/2147483647/c15e2527-af58-4244-964b-af1367249a21/
+~ PostgreSQL: 1-Replication, Cluster（集群模式）  
+~ PostgreSQL: 2-pgpool2  
+~ PostgreSQL: 3-repmgr  
 
 ### Balancer, pgpool server, Script & Config
 tw-pg-balancer.sh (update balancer settings)  
