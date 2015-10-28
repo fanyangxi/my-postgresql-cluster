@@ -11,7 +11,7 @@ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs
 sudo apt-get update
 
 # Install: basic
-sudo apt-get install sshpass
+sudo apt-get -y --force-yes install sshpass
 # Install PostgreSQL 9.3 (Server, Client)
 sudo apt-get -y --force-yes install postgresql-9.3 postgresql-contrib-9.3
 sudo apt-get -y --force-yes install postgresql-client-9.3 postgresql-client-common
@@ -38,6 +38,7 @@ set_conf () {
 sudo su - postgres -c sh <<EOF
 # generate a new RSA-keypair, # ssh-copy-id -i ~/.ssh/id_rsa.pub <slave hostname>
 ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ""
+chmod 740 .ssh/
 
 # adding authorized_keys, cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 sshpass -p 'a' ssh-copy-id -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pub 192.168.3.11
@@ -86,10 +87,10 @@ cat >> /etc/postgresql/9.3/main/pg_hba.conf <<EOFcat
 host    replication     repmgr_usr      192.168.3.0/24          trust
 host    all             repmgr_usr      192.168.3.0/24          trust
 host    all             pgpool_usr      192.168.3.0/24          trust
-host    all             admin           0.0.0.0/0               md5
 # tw: adding more entries
 host    all             all             127.0.0.1/32            trust
 host    all             all             192.168.3.0/24          md5
+host    all             all             0.0.0.0/0               md5
 EOFcat
 EOF
 
@@ -109,7 +110,7 @@ reconnect_interval=2
 
 failover=manual
 promote_command='/usr/bin/repmgr standby promote -f /var/lib/postgresql/repmgr/repmgr.conf'
-follow_command='/usr/bin/repmgr standby follow -f /var/lib/postgresql/repmgr/repmgr.conf -w'
+follow_command='/usr/bin/repmgr standby follow -f /var/lib/postgresql/repmgr/repmgr.conf'
 EOF"
 
 # chown -R postgres:postgres /var/lib/pgsql/.ssh /var/lib/pgsql/.pgpass /var/lib/pgsql/repmgr
@@ -117,10 +118,11 @@ chown -R postgres:postgres /var/lib/postgresql/repmgr
 
 service postgresql --full-restart
 
-# repmgr: Add users (todo: replace 'admin' using postgres)
-# sudo -u postgres psql -c "CREATE ROLE admin SUPERUSER CREATEDB CREATEROLE INHERIT REPLICATION LOGIN ENCRYPTED PASSWORD 'a';"
+# repmgr: Add users / roles
+sudo -u postgres psql -c "CREATE ROLE pgpool_usr SUPERUSER CREATEDB CREATEROLE INHERIT REPLICATION LOGIN ENCRYPTED PASSWORD 'a';"
 sudo -u postgres psql -c "CREATE USER repmgr_usr SUPERUSER LOGIN ENCRYPTED PASSWORD 'a';"
 sudo -u postgres psql -c "CREATE DATABASE repmgr_db OWNER repmgr_usr;"
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'a';"
 
 # repmgr: Register the master node with repmgr
 sudo su - postgres -c "/usr/bin/repmgr -f /var/lib/postgresql/repmgr/repmgr.conf --verbose master register"

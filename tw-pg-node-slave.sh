@@ -1,15 +1,15 @@
 #!/bin/sh
 # shell script for pg-node-slave
 DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
-CURRENT_NODE_ADDRESS=192.168.3.13
-CURRENT_NODE_NAME=pg-node-3
+CURRENT_NODE_ADDRESS=192.168.3.12
+CURRENT_NODE_NAME=pg-node-2
 
 # Add the APT repository of PostgreSQL packages for Debian and Ubuntu
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 sudo apt-get update
 
 # Install: basic
-sudo apt-get install sshpass
+sudo apt-get -y --force-yes install sshpass
 # Install PostgreSQL 9.3 (Server, Client)
 sudo apt-get -y --force-yes install postgresql-9.3 postgresql-contrib-9.3
 sudo apt-get -y --force-yes install postgresql-client-9.3 postgresql-client-common
@@ -91,7 +91,7 @@ EOF
 sudo su - postgres -c "mkdir -p /var/lib/postgresql/repmgr/"
 sudo su - postgres -c "cat > /var/lib/postgresql/repmgr/repmgr.conf <<EOF
 cluster=my_pgsql_cluster
-node=3
+node=2
 node_name=$CURRENT_NODE_NAME
 
 conninfo='host=$CURRENT_NODE_ADDRESS user=repmgr_usr dbname=repmgr_db' 
@@ -103,7 +103,7 @@ reconnect_interval=2
 
 failover=manual
 promote_command='/usr/bin/repmgr standby promote -f /var/lib/postgresql/repmgr/repmgr.conf'
-follow_command='/usr/bin/repmgr standby follow -f /var/lib/postgresql/repmgr/repmgr.conf -w'
+follow_command='/usr/bin/repmgr standby follow -f /var/lib/postgresql/repmgr/repmgr.conf'
 EOF"
 
 # chown -R postgres:postgres /var/lib/pgsql/.ssh /var/lib/pgsql/.pgpass /var/lib/pgsql/repmgr
