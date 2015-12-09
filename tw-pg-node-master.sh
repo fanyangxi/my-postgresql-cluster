@@ -1,11 +1,18 @@
 #!/bin/sh
 
-#==================================
+# The script needs to be run as root
+if [[ $(id -u) -ne 0 ]] ; 
+    then echo "Please run as root" ; 
+    return ; 
+fi
+
+# ========: Start with params
 # shell script for pg-node-master
 DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
 CURRENT_NODE_ADDRESS=192.168.3.11
 CURRENT_NODE_NAME=pg-node-1
 
+# ========: Install packages
 # Add the APT repository of PostgreSQL packages for Debian and Ubuntu
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 sudo apt-get update
@@ -20,19 +27,12 @@ sudo apt-get -y --force-yes install postgresql-9.3-pgpool2
 # Checking: if postgresql service has been succefully installed
 sudo service postgresql status
 
+# ========: Set password for user postgres
 # Change password to 'a' for user postgres
 echo -e "a\na\n" | sudo passwd postgres
 
-# Common functions:
-set_conf () {
-    local tkey=$1; local tvalue=$2; local tfile=$3
-    sed -i.bak -e "s/^#*\s*\($tkey\s*=\s*\).*\$/\1$tvalue/" $tfile
-    echo "===> set params completed: $tkey, $tvalue, $tfile"
-    return 0
-}
 
-#=====================================
-
+# ========: 
 # Set up trusted copy between the servers
 # 所有的Slave都在clone时把自己的key提交到master，同时把master上的数据复制到slave.local
 sudo su - postgres -c sh <<EOF
@@ -59,9 +59,17 @@ sudo incrontab -u postgres ~/temp-incron-tab.conf
 rm ~/temp-incron-tab.conf
 sudo service incron restart
 
-#=====================================
+# =====================================
 
-# Updating: postgresql.conf
+# Common functions:
+set_conf () {
+    local tkey=$1; local tvalue=$2; local tfile=$3
+    sed -i.bak -e "s/^#*\s*\($tkey\s*=\s*\).*\$/\1$tvalue/" $tfile
+    echo "===> set params completed: $tkey, $tvalue, $tfile"
+    return 0
+}
+
+# ========: Updating: postgresql.conf
 sudo -u postgres bash <<EOF
 set_conf () {
     local tkey=\$1; local tvalue=\$2; local tfile=\$3
@@ -80,7 +88,7 @@ set_conf archive_mode on $THE_POSTGRESQL_CONF
 set_conf archive_command \'cd .\' $THE_POSTGRESQL_CONF
 EOF
 
-# Updating: pg_hba.conf
+# ========: Updating: pg_hba.conf
 sudo -u postgres sh <<EOF
 cat >> /etc/postgresql/9.3/main/pg_hba.conf <<EOFcat
 # tw: to allow LAN slave nodes access
@@ -94,7 +102,7 @@ host    all             all             0.0.0.0/0               md5
 EOFcat
 EOF
 
-# repmgr: Create the directory & conf for repmgr
+# ========: repmgr: Create the directory & conf for repmgr
 sudo su - postgres -c "mkdir -p /var/lib/postgresql/repmgr/"
 sudo su - postgres -c "cat > /var/lib/postgresql/repmgr/repmgr.conf <<EOF
 cluster=my_pgsql_cluster
@@ -113,6 +121,7 @@ promote_command='/usr/bin/repmgr standby promote -f /var/lib/postgresql/repmgr/r
 follow_command='/usr/bin/repmgr standby follow -f /var/lib/postgresql/repmgr/repmgr.conf'
 EOF"
 
+# ========: 
 # chown -R postgres:postgres /var/lib/pgsql/.ssh /var/lib/pgsql/.pgpass /var/lib/pgsql/repmgr
 chown -R postgres:postgres /var/lib/postgresql/repmgr
 

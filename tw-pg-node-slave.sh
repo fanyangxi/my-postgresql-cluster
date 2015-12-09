@@ -1,4 +1,12 @@
 #!/bin/sh
+
+# The script needs to be run as root
+if [[ $(id -u) -ne 0 ]] ; 
+    then echo "The script needs to be run as root" ; 
+    return ; 
+fi
+
+# ==================================
 # shell script for pg-node-slave
 DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
 CURRENT_NODE_ADDRESS=192.168.3.12
@@ -29,7 +37,7 @@ set_conf () {
     return 0
 }
 
-#=====================================
+# =====================================
 
 # Set up trusted copy between the servers
 # One option at this point, to setup public key authentication, would be to repeat the steps as we 
@@ -60,7 +68,7 @@ EOFcat
 \"
 "
 
-#=====================================
+# =====================================
 
 # Check the connection to primary node
 sudo su - postgres -c "psql --username=repmgr_usr --dbname=repmgr_db --host $DEFAULT_MASTER_HOST_ADDRESS -w -l"
@@ -114,7 +122,7 @@ sudo su - postgres -c "/usr/bin/repmgr -f /var/lib/postgresql/repmgr/repmgr.conf
 sudo su - postgres -c "service postgresql --full-restart"
 
 
-#========
+# =======
 # sshpass -p 'a' ssh -o StrictHostKeyChecking=no -t postgres@localhost
 
 # # Set up trusted copy between the servers
