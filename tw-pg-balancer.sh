@@ -4,6 +4,9 @@ DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
 CURRENT_BALANCER_ADDRESS=192.168.3.5
 CURRENT_BALANCER_NAME=pg-balancer-1
 
+CURRENT_BALANCER_ADDRESS_2=192.168.3.6
+CURRENT_BALANCER_NAME_2=pg-balancer-2
+
 # Add the APT repository of PostgreSQL packages for Debian and Ubuntu
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 sudo apt-get update
@@ -20,49 +23,48 @@ chown -R postgres:postgres /etc/pgpool2/
 
 #=====================================
 
-# Set up trusted copy between the servers
-# One option at this point, to setup public key authentication, would be to repeat the steps as we 
-# did for root. But I’ll just reuse the generated keys, known_hosts and authorized_keys from root 
-# and use them for user postgres:
-sudo su - postgres -c sh <<EOF
-# generate a new RSA-keypair, # ssh-copy-id -i ~/.ssh/id_rsa.pub <slave hostname>
-ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ""
-chmod 740 .ssh/
+# # Set up trusted copy between the servers
+# # One option at this point, to setup public key authentication, would be to repeat the steps as we 
+# # did for root. But I’ll just reuse the generated keys, known_hosts and authorized_keys from root 
+# # and use them for user postgres:
+# sudo su - postgres -c sh <<EOF
+# # generate a new RSA-keypair, # ssh-copy-id -i ~/.ssh/id_rsa.pub <slave hostname>
+# ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ""
+# chmod 740 .ssh/
 
-# remote-adding authorized_keys: add the generated public keys of current slave to master ~/.ssh/authorized_keys
-sshpass -p 'a' ssh-copy-id -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pub $DEFAULT_MASTER_HOST_ADDRESS
+# # remote-adding authorized_keys: add the generated public keys of current slave to master ~/.ssh/authorized_keys
+# sshpass -p 'a' ssh-copy-id -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pub $DEFAULT_MASTER_HOST_ADDRESS
 
-# remote-adding known_hosts, ssh-keyscan -H 192.168.3.12 | sudo tee ~/.ssh/known_hosts
-# sshpass -p 'a' ssh -t postgres@$DEFAULT_MASTER_HOST_ADDRESS "sshpass -p 'a' ssh -o StrictHostKeyChecking=no postgres@$CURRENT_NODE_ADDRESS"
-# ssh-keygen -f "/var/lib/postgresql/.ssh/known_hosts" -R 192.168.3.12
-sshpass -p 'a' ssh -o StrictHostKeyChecking=no -t postgres@$DEFAULT_MASTER_HOST_ADDRESS "sshpass -p 'a' ssh-keyscan -H $CURRENT_NODE_ADDRESS | tee -a ~/.ssh/known_hosts"
+# # remote-adding known_hosts, ssh-keyscan -H 192.168.3.12 | sudo tee ~/.ssh/known_hosts
+# # sshpass -p 'a' ssh -t postgres@$DEFAULT_MASTER_HOST_ADDRESS "sshpass -p 'a' ssh -o StrictHostKeyChecking=no postgres@$CURRENT_NODE_ADDRESS"
+# # ssh-keygen -f "/var/lib/postgresql/.ssh/known_hosts" -R 192.168.3.12
+# sshpass -p 'a' ssh -o StrictHostKeyChecking=no -t postgres@$DEFAULT_MASTER_HOST_ADDRESS "sshpass -p 'a' ssh-keyscan -H $CURRENT_NODE_ADDRESS | tee -a ~/.ssh/known_hosts"
 
-# Grab public-key-authentication-files from Master (.ssh)
-sshpass -p 'a' scp -o StrictHostKeyChecking=no -r $DEFAULT_MASTER_HOST_ADDRESS:~/.ssh/{authorized_keys,known_hosts} ~/.ssh
-EOF
+# # Grab public-key-authentication-files from Master (.ssh)
+# sshpass -p 'a' scp -o StrictHostKeyChecking=no -r $DEFAULT_MASTER_HOST_ADDRESS:~/.ssh/{authorized_keys,known_hosts} ~/.ssh
+# EOF
 
-# register key-file change notification
-# after other slave updated the (authorized_keys & known_hosts), master need to push these 2 files to all other slave
-sudo su - postgres -c "
-sshpass -p \'a\' ssh -o StrictHostKeyChecking=no -t postgres@$DEFAULT_MASTER_HOST_ADDRESS \"
-cat >> /var/lib/postgresql/icron-job-key-change-notification.conf <<\EOFcat
-sshpass -p 'a' scp -o StrictHostKeyChecking=no -r /var/lib/postgresql/.ssh/authorized_keys /var/lib/postgresql/.ssh/known_hosts $CURRENT_NODE_ADDRESS:/var/lib/postgresql/.ssh
-EOFcat
-\"
-"
+# # register key-file change notification
+# # after other slave updated the (authorized_keys & known_hosts), master need to push these 2 files to all other slave
+# sudo su - postgres -c "
+# sshpass -p \'a\' ssh -o StrictHostKeyChecking=no -t postgres@$DEFAULT_MASTER_HOST_ADDRESS \"
+# cat >> /var/lib/postgresql/icron-job-key-change-notification.conf <<\EOFcat
+# sshpass -p 'a' scp -o StrictHostKeyChecking=no -r /var/lib/postgresql/.ssh/authorized_keys /var/lib/postgresql/.ssh/known_hosts $CURRENT_NODE_ADDRESS:/var/lib/postgresql/.ssh
+# EOFcat
+# \"
+# "
 
-#============Switching user: postgres
-sshpass -p 'a' ssh -o StrictHostKeyChecking=no -t postgres@localhost
-
+# ========: Updating: /etc/pgpool2/pgpool.conf
+THE_PGPOOL_CONF="/etc/pgpool2/pgpool.conf"
+sudo -u postgres bash <<EOF
 set_conf () {
-    local tkey=$1; local tvalue=$2; local tfile=$3
-    sed -i.bak -e "s/^#*\s*\($tkey\s*=\s*\).*\$/\1$tvalue/" $tfile
-    echo "===> set params completed: $tkey, $tvalue, $tfile"
+    local tkey=\$1; local tvalue=\$2; local tfile=\$3
+    sed -i.bak -e "s/^#*\\s*\\(\$tkey\\s*=\\s*\\).*\\\$/\\1\$tvalue/" \$tfile
+    echo "===> set params completed: \$tkey, \$tvalue, \$tfile"
     return 0
 }
 
-# Updating: /etc/pgpool2/pgpool.conf
-THE_PGPOOL_CONF="/etc/pgpool2/pgpool.conf"
+echo "XXXXXXXXXX $THE_PGPOOL_CONF"
 set_conf listen_addresses \'*\' $THE_PGPOOL_CONF
 set_conf enable_pool_hba on $THE_PGPOOL_CONF
 set_conf pool_passwd \'pool_password\' $THE_PGPOOL_CONF
@@ -105,19 +107,42 @@ set_conf backend_weight2 1 $THE_PGPOOL_CONF
 set_conf backend_data_directory2 "'\/var\/lib\/postgresql\/9.3\/main\'" $THE_PGPOOL_CONF
 set_conf backend_flag2 \'ALLOW_TO_FAILOVER\' $THE_PGPOOL_CONF
 
-exit
-#============Switching user: postgres
+# Watchdog:
+# Watchdog: Enabling watchdog
+set_conf use_watchdog on $THE_PGPOOL_CONF
+# Watchdog: Virtual IP
+set_conf delegate_IP \'192.168.1.100\' $THE_PGPOOL_CONF
+# Watchdog: Watchdog hostname & port
+set_conf wd_hostname \'$CURRENT_BALANCER_ADDRESS\' $THE_PGPOOL_CONF
+set_conf wd_port 9000 $THE_PGPOOL_CONF
+# Watchdog: Paths for commands to control virtual IP
+set_conf ifconfig_path "'\/usr\/sbin'" $THE_PGPOOL_CONF
+set_conf arping_path "'\/usr\/sbin'" $THE_PGPOOL_CONF
+# Watchdog: Lifechek method
+set_conf wd_lifecheck_method \'heartbeat\' $THE_PGPOOL_CONF
+# Watchdog: Lifechek intereval
+set_conf wd_interval 3 $THE_PGPOOL_CONF
+# Watchdog: Heartbeat settings
+set_conf wd_heartbeat_port 9694 $THE_PGPOOL_CONF
+set_conf heartbeat_destination0 \'$CURRENT_BALANCER_ADDRESS_2\' $THE_PGPOOL_CONF
+set_conf heartbeat_destination_port0 9694 $THE_PGPOOL_CONF
+# Watchdog: pgpool-II to be monitored
+set_conf other_pgpool_hostname0 \'$CURRENT_BALANCER_ADDRESS_2\' $THE_PGPOOL_CONF
+set_conf other_pgpool_port0 9999 $THE_PGPOOL_CONF
+set_conf other_wd_port0 9000 $THE_PGPOOL_CONF
+EOF
 
-sudo mkdir /var/www/.ssh
-sudo chown www-data:www-data /var/www/.ssh
-sudo chmod -R 750 /var/www/.ssh
+
+# sudo mkdir /var/www/.ssh
+# sudo chown www-data:www-data /var/www/.ssh
+# sudo chmod -R 750 /var/www/.ssh
 
 # File: /etc/pgpool2/failover_stream.sh
 #=============================================
 sudo -u postgres sh <<\EOF
 cat > /etc/pgpool2/failover_stream.sh <<\EOF2
 #!/bin/sh
-# Failover command for streaming replication.
+# Failover ocmmand for streaming replication.
 #
 # Arguments: $1: failed node id. $2: new master hostname.
  
@@ -199,13 +224,62 @@ EOF
 # Last step is to allow connection via PCP to manage pgpool. This requires a similar approach as 
 # with pool_password:
 sudo -u postgres sh <<\EOF
-rm -rf pcp.conf
-touch pcp.conf
+rm -rf /etc/pgpool2/pcp.conf
+touch /etc/pgpool2/pcp.conf
 echo "pgpool_usr:$(pg_md5 a)" | tee -a /etc/pgpool2/pcp.conf
 echo "postgres:$(pg_md5 a)" | tee -a /etc/pgpool2/pcp.conf
 echo "ugis:$(pg_md5 ugis)" | tee -a /etc/pgpool2/pcp.conf
 EOF
 
+
+#############################################
+# Install pgpoolAdmin
+#############################################
+
+# Install: HTTP Server(Apache)
+sudo apt-get -y --force-yes install apache2
+# Install: PHP4.4.2 and higher
+sudo apt-get -y --force-yes install php5 libapache2-mod-php5
+sudo apt-get -y --force-yes install php5-pgsql
+# sudo service apache2 restart
+sudo /etc/init.d/apache2 restart
+# Install: pgpool (Already done)
+
+# the apache2 is using user www-data
+# adding www-data to postgres group, $ id www-data, so the web-application can start pgpool and write log
+sudo usermod -a -G postgres www-data
+
+# x
+PGPOOL_ADMIN_TOOL=pgpooladmin-tool
+wget http://www.pgpool.net/download.php?f=pgpoolAdmin-3.4.1.tar.gz
+mv download.php\?f\=pgpoolAdmin-3.4.1.tar.gz pgpoolAdmin-3.4.1.tar.gz
+
+# sudo tar xzf pgpoolAdmin-3.4.1.tar.gz -C /var/www/html/$PGPOOL_ADMIN_TOOL
+sudo tar xzf pgpoolAdmin-3.4.1.tar.gz
+sudo mv pgpoolAdmin-3.4.1 $PGPOOL_ADMIN_TOOL
+sudo rm -rf /var/www/html/$PGPOOL_ADMIN_TOOL
+sudo mv $PGPOOL_ADMIN_TOOL /var/www/html/
+
+sudo chmod 777 /var/www/html/$PGPOOL_ADMIN_TOOL/templates_c
+
+sudo chown www-data /var/www/html/$PGPOOL_ADMIN_TOOL/conf/pgmgt.conf.php
+sudo chmod 644 /var/www/html/$PGPOOL_ADMIN_TOOL/conf/pgmgt.conf.php
+sudo chmod 777 /var/www/html/$PGPOOL_ADMIN_TOOL/conf/pgmgt.conf.php
+
+sudo chown www-data /etc/pgpool2/pgpool.conf
+sudo chmod 644 /etc/pgpool2/pgpool.conf
+
+sudo chown www-data /etc/pgpool2/pcp.conf
+sudo chmod 644 /etc/pgpool2/pcp.conf
+
+sudo chown www-data /etc/pgpool2/pool_password
+sudo chmod 644 /etc/pgpool2/pool_password
+
+sudo chmod 755 /usr/sbin/pgpool
+sudo chmod 755 /usr/sbin/pcp_*
+
+# sudo service apache2 restart
+sudo /etc/init.d/apache2 restart
 
 #===
 

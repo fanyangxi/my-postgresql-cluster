@@ -44,14 +44,14 @@ echo -e "a\na\n" | sudo passwd postgres
 # Set up trusted copy between the servers
 # 所有的Slave都在clone时把自己的key提交到master，同时把master上的数据复制到slave.local
 sudo su - postgres -c sh <<EOF
-# generate a new RSA-keypair, # ssh-copy-id -i ~/.ssh/id_rsa.pub <slave hostname>
+# Generate a new RSA-keypair, # ssh-copy-id -i ~/.ssh/id_rsa.pub <slave hostname>
 ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ""
 chmod 740 .ssh/
 
-# adding authorized_keys, cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+# Adding authorized_keys, cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 sshpass -p 'a' ssh-copy-id -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa.pub 192.168.3.11
 
-# adding known_hosts, ssh-keyscan -H 192.168.3.11 | sudo tee ~/.ssh/known_hosts
+# Adding known_hosts, ssh-keyscan -H 192.168.3.11 | sudo tee ~/.ssh/known_hosts
 sshpass -p 'a' ssh -o StrictHostKeyChecking=no postgres@192.168.3.11
 EOF
 
@@ -68,22 +68,12 @@ sudo incrontab -u postgres ~/temp-incron-tab.conf
 sudo rm ~/temp-incron-tab.conf
 sudo service incron restart
 
-# =====================================
 
-# Common functions:
+######: Update-Conf: postgresql.conf
 set_conf () {
-    local tkey=$1; local tvalue=$2; local tfile=$3
+    local tkey=$1; local tvalue=$2; local tfile=$3;
     sed -i.bak -e "s/^#*\s*\($tkey\s*=\s*\).*\$/\1$tvalue/" $tfile
     echo "===> set params completed: $tkey, $tvalue, $tfile"
-    return 0
-}
-
-######: Updating: postgresql.conf
-sudo -u postgres bash <<EOF
-set_conf () {
-    local tkey=\$1; local tvalue=\$2; local tfile=\$3
-    sed -i.bak -e "s/^#*\\s*\\(\$tkey\\s*=\\s*\\).*\\\$/\\1\$tvalue/" \$tfile
-    echo "===> set params completed: \$tkey, \$tvalue, \$tfile"
     return 0
 }
 
@@ -95,7 +85,7 @@ set_conf max_wal_senders 5 $THE_POSTGRESQL_CONF
 set_conf hot_standby on $THE_POSTGRESQL_CONF
 set_conf archive_mode on $THE_POSTGRESQL_CONF
 set_conf archive_command \'cd .\' $THE_POSTGRESQL_CONF
-EOF
+
 
 ######: Updating: pg_hba.conf
 sudo -u postgres sh <<EOF
@@ -105,7 +95,7 @@ host    replication     repmgr_usr      192.168.3.0/24          trust
 host    all             repmgr_usr      192.168.3.0/24          trust
 host    all             pgpool_usr      192.168.3.0/24          trust
 # tw: adding more entries
-host    all             all  	           127.0.0.1/32            trust
+host    all             all  	        127.0.0.1/32            trust
 host    all             all             192.168.3.0/24          md5
 host    all             all             0.0.0.0/0               md5
 EOFcat

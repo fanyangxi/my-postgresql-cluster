@@ -18,7 +18,7 @@ PostgreSQL流复制 + Pgpool-2实现高可用（HA）
 - Ubuntu 14.04.3 LTS, trusty
 - postgresql v9.3
 - pgpool-II v3.3.4 (tokakiboshi)
-- pgpoolAdmin3 v0
+- pgpoolAdmin3 v3.4.1 (http://www.pgpool.net/download.php?f=pgpoolAdmin-3.4.1.tar.gz)
 - repmgr v0
 
 系统的网络图如下，包含:  
