@@ -3,7 +3,7 @@ PostgreSQL Replication, and load balancing with pgpool2 / repmgr
 
 Using below tools:
 
-**postgresql**: the dataabse server / client  
+**postgresql**: the database server / client  
 **repmgr**: the Replication Manager for PostgreSQL clusters  
 **pgpool (with pgpoolAdmin3)**: for load balancing, failover control, pgpoolAdmin is a management tool for pgpool-II written in PHP
 

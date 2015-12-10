@@ -10,13 +10,18 @@ PostgreSQL流复制 + Pgpool-2实现高可用（HA）
 最近花了不少时间在PostgreSQL上面，虽然进度缓慢不过还是总结一下的好。
 
 简而言之，本文将包含 使用PostgreSQL搭建的主从数据库集群（使用Streaming Replication功能）、使用pgpool-2实现负载均衡、和故障切换。其中PostgreSQL的Replication是使用第三方工具repmgr进行管理的。
-
 - Replication
 - Load balancing
 - Failover & Online recovery
 
-系统的网络图如下，包含:
+环境和相关软件版本：
+- Ubuntu 14.04.3 LTS, trusty
+- postgresql v9.3
+- pgpool-II v3.3.4 (tokakiboshi)
+- pgpoolAdmin3 v0
+- repmgr v0
 
+系统的网络图如下，包含:  
 - Node-Primary: the master postgresql node, of the cluster
 - Node-Standby: the slave postgresql node, of the cluster
 - Balancer-Primary: the pgpool server 01
@@ -508,23 +513,10 @@ echo "ugis:$(pg_md5 ugis)" | tee -a /etc/pgpool2/pcp.conf
 EOF
 ```
 
-+
+## Misc
+
+
 
 --------
-
-``` python
-@requires_authorization
-def somefunc(param1='', param2=0):
-    '''A docstring'''
-    if param1 > param2: # interesting
-        print 'Greater'
-    return (param2 - param1 + 1) or None
-class SomeClass:
-    pass
->>> message = '''interpreter
-... prompt'''
-```
-
-## References
 
 [img-1-network-diagram]: resource/img-1-network-diagram.png
