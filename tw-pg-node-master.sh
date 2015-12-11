@@ -70,14 +70,15 @@ sudo service incron restart
 
 
 ######: Update-Conf: postgresql.conf
+THE_POSTGRESQL_CONF="/etc/postgresql/9.3/main/postgresql.conf"
+sudo -u postgres bash <<EOF
 set_conf () {
-    local tkey=$1; local tvalue=$2; local tfile=$3;
-    sed -i.bak -e "s/^#*\s*\($tkey\s*=\s*\).*\$/\1$tvalue/" $tfile
-    echo "===> set params completed: $tkey, $tvalue, $tfile"
+    local tkey=\$1; local tvalue=\$2; local tfile=\$3
+    sed -i.bak -e "s/^#*\\s*\\(\$tkey\\s*=\\s*\\).*\\\$/\\1\$tvalue/" \$tfile
+    echo "===> set params completed: \$tkey, \$tvalue, \$tfile"
     return 0
 }
 
-THE_POSTGRESQL_CONF=\"/etc/postgresql/9.3/main/postgresql.conf\"
 set_conf listen_addresses \'*\' $THE_POSTGRESQL_CONF
 set_conf wal_level hot_standby $THE_POSTGRESQL_CONF
 set_conf wal_keep_segments 5000 $THE_POSTGRESQL_CONF
@@ -85,7 +86,7 @@ set_conf max_wal_senders 5 $THE_POSTGRESQL_CONF
 set_conf hot_standby on $THE_POSTGRESQL_CONF
 set_conf archive_mode on $THE_POSTGRESQL_CONF
 set_conf archive_command \'cd .\' $THE_POSTGRESQL_CONF
-
+EOF
 
 ######: Updating: pg_hba.conf
 sudo -u postgres sh <<EOF

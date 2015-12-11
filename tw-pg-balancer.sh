@@ -1,10 +1,18 @@
 #!/bin/sh
 # shell script for pg-balancer
-DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
-CURRENT_BALANCER_ADDRESS=192.168.3.5
+
+if [ $1 = "" ] || [ $2 = "" ]; then
+	echo "2 Params can not be empty."
+	exit -1;
+fi
+
+# DEFAULT_MASTER_HOST_ADDRESS=192.168.3.11
+CURRENT_BALANCER_ADDRESS=$1
+echo $CURRENT_BALANCER_ADDRESS
 CURRENT_BALANCER_NAME=pg-balancer-1
 
-CURRENT_BALANCER_ADDRESS_2=192.168.3.6
+CURRENT_BALANCER_ADDRESS_2=$2
+echo $CURRENT_BALANCER_ADDRESS_2
 CURRENT_BALANCER_NAME_2=pg-balancer-2
 
 # Add the APT repository of PostgreSQL packages for Debian and Ubuntu
@@ -66,6 +74,7 @@ set_conf () {
 
 echo "XXXXXXXXXX $THE_PGPOOL_CONF"
 set_conf listen_addresses \'*\' $THE_PGPOOL_CONF
+set_conf port 9999 $THE_PGPOOL_CONF
 set_conf enable_pool_hba on $THE_PGPOOL_CONF
 set_conf pool_passwd \'pool_password\' $THE_PGPOOL_CONF
 set_conf connection_cache off $THE_PGPOOL_CONF
@@ -101,11 +110,11 @@ set_conf backend_weight1 1 $THE_PGPOOL_CONF
 set_conf backend_data_directory1 "'\/var\/lib\/postgresql\/9.3\/main\'" $THE_PGPOOL_CONF
 set_conf backend_flag1 \'ALLOW_TO_FAILOVER\' $THE_PGPOOL_CONF
 
-set_conf backend_hostname2 \'192.168.3.13\' $THE_PGPOOL_CONF
-set_conf backend_port2 5432 $THE_PGPOOL_CONF
-set_conf backend_weight2 1 $THE_PGPOOL_CONF
-set_conf backend_data_directory2 "'\/var\/lib\/postgresql\/9.3\/main\'" $THE_PGPOOL_CONF
-set_conf backend_flag2 \'ALLOW_TO_FAILOVER\' $THE_PGPOOL_CONF
+# set_conf backend_hostname2 \'192.168.3.13\' $THE_PGPOOL_CONF
+# set_conf backend_port2 5432 $THE_PGPOOL_CONF
+# set_conf backend_weight2 1 $THE_PGPOOL_CONF
+# set_conf backend_data_directory2 "'\/var\/lib\/postgresql\/9.3\/main\'" $THE_PGPOOL_CONF
+# set_conf backend_flag2 \'ALLOW_TO_FAILOVER\' $THE_PGPOOL_CONF
 
 # Watchdog:
 # Watchdog: Enabling watchdog
@@ -116,7 +125,7 @@ set_conf delegate_IP \'192.168.1.100\' $THE_PGPOOL_CONF
 set_conf wd_hostname \'$CURRENT_BALANCER_ADDRESS\' $THE_PGPOOL_CONF
 set_conf wd_port 9000 $THE_PGPOOL_CONF
 # Watchdog: Paths for commands to control virtual IP
-set_conf ifconfig_path "'\/usr\/sbin'" $THE_PGPOOL_CONF
+set_conf ifconfig_path "'\/sbin'" $THE_PGPOOL_CONF
 set_conf arping_path "'\/usr\/sbin'" $THE_PGPOOL_CONF
 # Watchdog: Lifechek method
 set_conf wd_lifecheck_method \'heartbeat\' $THE_PGPOOL_CONF
@@ -197,8 +206,8 @@ chown -R postgres:postgres /etc/pgpool2/follow_master_command.sh
 chmod 755 /etc/pgpool2/follow_master_command.sh
 EOF
 
-#=============================================
 # Updating: pg_hba.conf
+#=============================================
 sudo -u postgres sh <<EOF
 cat >> /etc/pgpool2/pool_hba.conf <<EOFcat
 # tw:
@@ -277,6 +286,13 @@ sudo chmod 644 /etc/pgpool2/pool_password
 
 sudo chmod 755 /usr/sbin/pgpool
 sudo chmod 755 /usr/sbin/pcp_*
+
+### Upate pgpoolAdmin config
+THE_PGMGT_CONF=/var/www/html/$PGPOOL_ADMIN_TOOL/install/defaultParameter.php
+sudo sed -i "s@define(\"_PGPOOL2_CONFIG_FILE\", \"/usr/local/etc/pgpool.conf\");@define(\"_PGPOOL2_CONFIG_FILE\", \"/etc/pgpool2/pgpool.conf\");@g" $THE_PGMGT_CONF
+sudo sed -i "s@define(\"_PGPOOL2_PASSWORD_FILE\", \"/usr/local/etc/pcp.conf\");@define(\"_PGPOOL2_PASSWORD_FILE\", \"/etc/pgpool2/pcp.conf\");@g" $THE_PGMGT_CONF
+sudo sed -i "s@define(\"_PGPOOL2_COMMAND\", \"/usr/local/bin/pgpool\");@define(\"_PGPOOL2_COMMAND\", \"/usr/sbin/pgpool\");@g" $THE_PGMGT_CONF
+sudo sed -i "s@define(\"_PGPOOL2_PCP_DIR\", \"/usr/local/bin\");@define(\"_PGPOOL2_PCP_DIR\", \"/usr/sbin\");@g" $THE_PGMGT_CONF
 
 # sudo service apache2 restart
 sudo /etc/init.d/apache2 restart
