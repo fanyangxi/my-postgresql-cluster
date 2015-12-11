@@ -9,7 +9,7 @@ PostgreSQL流复制 + Pgpool-2实现高可用（HA）
 
 最近花了不少时间在PostgreSQL上面，虽然进度缓慢不过还是总结一下的好。
 
-简而言之，本文将包含 使用PostgreSQL搭建的主从数据库集群（使用Streaming Replication功能）、使用pgpool-2实现负载均衡、和故障切换。其中PostgreSQL的Replication是使用第三方工具repmgr进行管理的。
+本文将包含 使用PostgreSQL搭建的主从数据库集群（使用Streaming Replication功能）、使用pgpool-2实现负载均衡、和故障切换。其中PostgreSQL的Replication是使用第三方工具repmgr进行管理的。
 - Replication
 - Load balancing
 - Failover & Online recovery
