@@ -593,7 +593,7 @@ end
 
 Balancer-Secondary: Configured in vagrant file
 
-``` shell
+``` vagrant
 # tw-pg-balancer.sh 192.168.3.6 192.168.3.5
 config.vm.provision "shell" do |sh|
   sh.path = "../my-postgresql-cluster/tw-pg-balancer.sh"
